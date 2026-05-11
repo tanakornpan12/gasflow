@@ -1,0 +1,58 @@
+# Environment and local secrets
+.env
+.env.*
+!.env.example
+.env.local
+.env.*.local
+.codex/
+
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build and framework output
+dist/
+build/
+.next/
+out/
+**/out/
+gasflow-*/out/
+
+# Temporary and generated artifacts
+tmp/
+artifacts/
+docs/
+second brain/
+AGENTS.md
+logs/
+coverage/
+*.log
+*.tmp
+*.bak
+*.backup
+*.dump
+
+# Local runtime data and exports
+data/gasflow-data.json
+!data/gasflow-data.sample.json
+gasflow-backup-*.json
+backup-*.json
+export-*.json
+*.sqlite
+*.db
+
+# Generated media and office exports
+*.mp4
+*.mov
+*.webm
+*.avi
+*.wav
+*.pdf
+*.pptx
+*.docx
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+*.swp
+*.swo

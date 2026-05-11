@@ -1,0 +1,31 @@
+{
+  "customers": [
+    {
+      "id": 1,
+      "name": "ลูกค้าทดสอบ 001",
+      "phone": "080-000-0001",
+      "address": "ที่อยู่ตัวอย่าง 1",
+      "customer_type": "ทั่วไป",
+      "balance_due": 0,
+      "cylinders_on_hand": "15kg 1 ถัง"
+    }
+  ],
+  "products": [
+    {
+      "id": 1,
+      "sku": "GAS-15",
+      "name": "แก๊ส 15 กก.",
+      "category": "gas",
+      "unit": "ถัง",
+      "unit_price": 380,
+      "stock_full": 10,
+      "stock_empty": 5,
+      "reorder_level": 2
+    }
+  ],
+  "orders": [],
+  "payments": [],
+  "goods_receipts": [],
+  "goods_receipt_items": [],
+  "stock_movements": []
+}
