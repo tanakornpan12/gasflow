@@ -1,12 +1,12 @@
 {
   "scripts": {
-    "check:syntax": "node --check backend/server.js && node --check backend/mailer.js && node --check backend/store/auth-utils.js && node --check backend/store/seed.js && node --check backend/store/store.js && node --check backend/store/store-file.js && node --check backend/store/store-mysql.js && node --check scripts/migrate-mysql.cjs && node --check scripts/reset-mysql-seed.cjs && node --check scripts/test-product-auto-sku.cjs && node --check web-admin/src/App.js",
+    "check:syntax": "node scripts/check-syntax.cjs",
     "dev": "node backend/server.js",
     "start": "node backend/server.js",
-    "lint": "npm run check:syntax",
-    "typecheck": "npm run check:syntax",
-    "test": "npm run check:syntax",
-    "build": "npm run check:syntax"
+    "lint": "npm run check:syntax && node scripts/check-project-hygiene.cjs",
+    "typecheck": "node scripts/check-module-contracts.cjs",
+    "test": "node scripts/run-unit-tests.cjs",
+    "build": "node scripts/check-build.cjs"
   },
   "dependencies": {
     "mysql2": "^3.11.5"
