@@ -3,12 +3,19 @@
     "check:syntax": "node scripts/check-syntax.cjs",
     "dev": "node backend/server.js",
     "start": "node backend/server.js",
-    "lint": "npm run check:syntax && node scripts/check-project-hygiene.cjs",
-    "typecheck": "node scripts/check-module-contracts.cjs",
+    "lint": "npm run check:syntax && eslint backend web-admin/src mobile-app/App.js mobile-app/src scripts && node scripts/check-project-hygiene.cjs",
+    "typecheck": "tsc -p tsconfig.json && node scripts/check-module-contracts.cjs",
     "test": "node scripts/run-unit-tests.cjs",
-    "build": "node scripts/check-build.cjs"
+    "build": "esbuild web-admin/src/App.js --bundle --format=esm --platform=browser --target=es2020 --outdir=tmp/quality-build --entry-names=app && node scripts/check-build.cjs"
   },
   "dependencies": {
     "mysql2": "^3.11.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^25.6.2",
+    "esbuild": "^0.28.0",
+    "eslint": "^10.3.0",
+    "typescript": "^6.0.3"
   }
 }
