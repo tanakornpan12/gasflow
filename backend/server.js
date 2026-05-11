@@ -8,6 +8,7 @@ const projectRoot = path.resolve(__dirname, "..");
 const webRoot = path.join(projectRoot, "web-admin");
 
 loadEnv(path.join(projectRoot, ".env"));
+const isProduction = process.env.NODE_ENV === "production";
 const { createStore } = require("./store/store");
 const { hasFeaturePermission } = require("./store/auth-utils");
 const { isEmailConfigured, sendPasswordResetEmail } = require("./mailer");
@@ -39,28 +40,89 @@ function loadEnv(filePath) {
   }
 }
 
-function sendJson(res, status, payload) {
-  res.writeHead(status, {
-    "Content-Type": "application/json; charset=utf-8",
-    "Cache-Control": "no-store",
-    "Access-Control-Allow-Origin": "*",
+function listEnv(name) {
+  return String(process.env[name] || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function normalizeOrigin(value = "") {
+  try {
+    return new URL(value).origin;
+  } catch {
+    return "";
+  }
+}
+
+function configuredAppBaseUrl() {
+  return String(process.env.APP_BASE_URL || "").trim().replace(/\/+$/, "");
+}
+
+function configuredAllowedOrigins() {
+  const origins = new Set();
+  for (const item of listEnv("CORS_ALLOWED_ORIGINS")) {
+    const origin = normalizeOrigin(item);
+    if (origin) origins.add(origin);
+  }
+  const appOrigin = normalizeOrigin(configuredAppBaseUrl());
+  if (appOrigin) origins.add(appOrigin);
+  return origins;
+}
+
+const allowedCorsOrigins = configuredAllowedOrigins();
+
+function isLocalOrigin(origin = "") {
+  try {
+    const parsed = new URL(origin);
+    return ["localhost", "127.0.0.1", "::1"].includes(parsed.hostname);
+  } catch {
+    return false;
+  }
+}
+
+function corsHeadersForRequest(req) {
+  const origin = String(req.headers.origin || "").trim();
+  const headers = {
     "Access-Control-Allow-Methods": "GET,POST,PATCH,DELETE,OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization",
-  });
+  };
+  if (!origin) return headers;
+  if (allowedCorsOrigins.has(origin) || (!isProduction && isLocalOrigin(origin))) {
+    headers["Access-Control-Allow-Origin"] = origin;
+    headers.Vary = "Origin";
+  }
+  return headers;
+}
+
+function applyCorsHeaders(req, res) {
+  res.__corsHeaders = corsHeadersForRequest(req);
+  for (const [key, value] of Object.entries(res.__corsHeaders)) {
+    res.setHeader(key, value);
+  }
+  return res.__corsHeaders;
+}
+
+function responseHeaders(res, headers = {}) {
+  return { ...(res.__corsHeaders || {}), ...headers };
+}
+
+function sendJson(res, status, payload) {
+  res.writeHead(status, responseHeaders(res, {
+    "Content-Type": "application/json; charset=utf-8",
+    "Cache-Control": "no-store",
+  }));
   res.end(JSON.stringify(payload));
 }
 
 function sendJsonDownload(res, status, payload, filename) {
   const body = JSON.stringify(payload, null, 2);
-  res.writeHead(status, {
+  res.writeHead(status, responseHeaders(res, {
     "Content-Type": "application/json; charset=utf-8",
     "Content-Disposition": `attachment; filename="${filename}"`,
     "Cache-Control": "no-store",
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "GET,POST,PATCH,DELETE,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
     "Access-Control-Expose-Headers": "Content-Disposition",
-  });
+  }));
   res.end(body);
 }
 
@@ -86,6 +148,11 @@ function apiErrorStatus(error) {
     "Request body too large",
   ];
   return clientSignals.some((signal) => message.includes(signal)) ? 400 : 500;
+}
+
+function publicErrorPayload(error, status) {
+  if (isProduction && Number(status) >= 500) return { error: "Internal server error" };
+  return { error: error?.message || "API error" };
 }
 
 function readBody(req) {
@@ -158,14 +225,15 @@ function destroyUserSessions(userId) {
 }
 
 function resetLinkForRequest(req, token) {
-  const configuredBase = String(process.env.APP_BASE_URL || "").trim().replace(/\/+$/, "");
+  const configuredBase = configuredAppBaseUrl();
+  if (!configuredBase && isProduction) return "";
   const requestBase = `${req.headers["x-forwarded-proto"] || "http"}://${req.headers.host || `localhost:${port}`}`;
   const base = configuredBase || requestBase;
   return `${base}/?resetToken=${encodeURIComponent(token)}`;
 }
 
 function shouldExposeDebugResetLink() {
-  return process.env.NODE_ENV !== "production" || process.env.RESET_LINK_DEBUG === "1";
+  return !isProduction && process.env.RESET_LINK_DEBUG !== "0";
 }
 
 function maskEmail(email = "") {
@@ -279,14 +347,13 @@ function filterDashboardForUser(dashboard = {}, user = {}) {
 }
 
 async function handleApi(req, res, url) {
+  if (!url.pathname.startsWith("/api/")) return false;
+  applyCorsHeaders(req, res);
   try {
     if (req.method === "OPTIONS" && url.pathname.startsWith("/api/")) {
-      res.writeHead(204, {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET,POST,PATCH,DELETE,OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      res.writeHead(204, responseHeaders(res, {
         "Cache-Control": "no-store",
-      });
+      }));
       res.end();
       return true;
     }
@@ -313,11 +380,11 @@ async function handleApi(req, res, url) {
         ok: true,
         mailConfigured: configured,
         mailSent: false,
-        maskedEmail: reset.email ? maskEmail(reset.email) : "",
+        maskedEmail: !isProduction && reset.email ? maskEmail(reset.email) : "",
       };
       if (reset.email && reset.token) {
         const resetLink = resetLinkForRequest(req, reset.token);
-        if (configured) {
+        if (configured && resetLink) {
           const mail = await sendPasswordResetEmail({
             to: reset.email,
             username: reset.user?.display_name || reset.user?.username || "",
@@ -326,7 +393,7 @@ async function handleApi(req, res, url) {
           });
           payload.mailSent = Boolean(mail.sent);
         }
-        if (!configured && shouldExposeDebugResetLink()) payload.devResetLink = resetLink;
+        if (!configured && resetLink && shouldExposeDebugResetLink()) payload.devResetLink = resetLink;
       }
       sendJson(res, 200, payload);
       return true;
@@ -743,7 +810,8 @@ async function handleApi(req, res, url) {
 
     return false;
   } catch (error) {
-    sendJson(res, apiErrorStatus(error), { error: error.message });
+    const status = apiErrorStatus(error);
+    sendJson(res, status, publicErrorPayload(error, status));
     return true;
   }
 }

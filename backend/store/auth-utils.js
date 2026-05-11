@@ -28,10 +28,18 @@ function verifyPassword(password, storedHash = "") {
   return actual.length === expected.length && crypto.timingSafeEqual(actual, expected);
 }
 
+function defaultAdminPassword() {
+  const password = String(process.env.DEFAULT_ADMIN_PASSWORD || "");
+  if (process.env.NODE_ENV === "production" && !password) {
+    throw new Error("DEFAULT_ADMIN_PASSWORD is required in production.");
+  }
+  return password || "admin1234";
+}
+
 function createDefaultUser() {
   return {
     username: process.env.DEFAULT_ADMIN_USERNAME || "admin",
-    password_hash: hashPassword(process.env.DEFAULT_ADMIN_PASSWORD || "admin1234"),
+    password_hash: hashPassword(defaultAdminPassword()),
     display_name: process.env.DEFAULT_ADMIN_NAME || "ผู้ดูแลระบบ",
     email: normalizeEmail(process.env.DEFAULT_ADMIN_EMAIL || ""),
     role: "admin",
