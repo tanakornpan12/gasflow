@@ -15,7 +15,9 @@
   },
   "include": [
     "backend/mailer.js",
+    "backend/production-readiness.js",
     "backend/store/auth-utils.js",
+    "backend/store/store.js",
     "backend/store/store-mysql.js",
     "mobile-app/src/api.js",
     "mobile-app/src/date.js",

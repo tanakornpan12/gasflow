@@ -9,11 +9,12 @@ const webRoot = path.join(projectRoot, "web-admin");
 
 loadEnv(path.join(projectRoot, ".env"));
 const isProduction = process.env.NODE_ENV === "production";
-// TODO(security): Add a production readiness gate for APP_BASE_URL, CORS, SMTP,
-// admin defaults, and storage config instead of relying on scattered checks.
+const { assertProductionReadiness } = require("./production-readiness");
 const { createStore } = require("./store/store");
 const { hasFeaturePermission } = require("./store/auth-utils");
 const { isEmailConfigured, sendPasswordResetEmail } = require("./mailer");
+
+assertProductionReadiness();
 
 const port = Number(process.env.PORT || 5173);
 const store = createStore();
@@ -856,6 +857,14 @@ const server = http.createServer(async (req, res) => {
   sendStatic(res, url.pathname);
 });
 
-server.listen(port, () => {
-  console.log(`GasFlow app and API running at http://localhost:${port}`);
+async function startServer() {
+  if (isProduction) await store.health();
+  server.listen(port, () => {
+    console.log(`GasFlow app and API running at http://localhost:${port}`);
+  });
+}
+
+startServer().catch((error) => {
+  console.error(error?.message || error);
+  process.exit(1);
 });
