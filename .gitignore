@@ -21,6 +21,8 @@ gasflow-*/out/
 # Temporary and generated artifacts
 tmp/
 artifacts/
+gasflow-ad-hyperframes/
+gasflow-intro-video/
 docs/
 second brain/
 AGENTS.md
