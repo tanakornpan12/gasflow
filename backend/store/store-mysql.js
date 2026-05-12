@@ -70,11 +70,35 @@ function createMySqlStore() {
     charset: "utf8mb4",
   });
 
-  // TODO(types): mysql2 returns broad QueryResult unions. Add typed row/result helpers
-  // in a future PR before expanding TypeScript coverage across this adapter.
+  /**
+   * @typedef {Record<string, any>} DbRow
+   * @typedef {DbRow[] & { insertId?: number, affectedRows?: number, changedRows?: number }} DbQueryResult
+   * @typedef {{
+   *   beginTransaction: () => Promise<void>,
+   *   commit: () => Promise<void>,
+   *   rollback: () => Promise<void>,
+   *   release: () => void,
+   *   execute: (sql: string, params?: any[]) => Promise<[DbQueryResult, any]>
+   * }} DbConnection
+   */
+
+  // mysql2 exposes broad QueryResult unions. Keep the adapter cast in one place so
+  // TypeScript can cover this file without changing the current store behavior.
+  /**
+   * @param {string} sql
+   * @param {any[]} [params]
+   * @returns {Promise<DbQueryResult>}
+   */
   async function query(sql, params = []) {
     const [rows] = await pool.execute(sql, params);
-    return rows;
+    return /** @type {DbQueryResult} */ (rows);
+  }
+
+  /**
+   * @returns {Promise<DbConnection>}
+   */
+  async function getConnection() {
+    return /** @type {DbConnection} */ (await pool.getConnection());
   }
 
   function hashResetToken(token = "") {
@@ -1135,7 +1159,7 @@ function createMySqlStore() {
       `);
     },
     async createSupplierPaymentVoucher(input) {
-      const conn = await pool.getConnection();
+      const conn = await getConnection();
       try {
         await conn.beginTransaction();
         const receiptId = Number(input.goods_receipt_id || 0);
@@ -1190,7 +1214,7 @@ function createMySqlStore() {
       }
     },
     async deleteSupplierPaymentVoucher(id) {
-      const conn = await pool.getConnection();
+      const conn = await getConnection();
       try {
         await conn.beginTransaction();
         const [vouchers] = await conn.execute("SELECT * FROM supplier_payment_vouchers WHERE id = ? AND COALESCE(is_active, 1) = 1", [id]);
@@ -1223,7 +1247,7 @@ function createMySqlStore() {
       }
     },
     async createGoodsReceipt(input) {
-      const conn = await pool.getConnection();
+      const conn = await getConnection();
       try {
         await conn.beginTransaction();
         const items = Array.isArray(input.items) && input.items.length ? input.items : [{
@@ -1311,7 +1335,7 @@ function createMySqlStore() {
       }
     },
     async updateGoodsReceipt(id, input) {
-      const conn = await pool.getConnection();
+      const conn = await getConnection();
       try {
         await conn.beginTransaction();
         const [receipts] = await conn.execute("SELECT * FROM goods_receipts WHERE id = ? AND COALESCE(is_active, 1) = 1", [id]);
@@ -1422,7 +1446,7 @@ function createMySqlStore() {
       }
     },
     async deleteGoodsReceipt(id) {
-      const conn = await pool.getConnection();
+      const conn = await getConnection();
       try {
         await conn.beginTransaction();
         const [receipts] = await conn.execute("SELECT * FROM goods_receipts WHERE id = ? AND COALESCE(is_active, 1) = 1", [id]);
@@ -1464,7 +1488,7 @@ function createMySqlStore() {
       return enrichOrders();
     },
     async createOrder(input) {
-      const conn = await pool.getConnection();
+      const conn = await getConnection();
       try {
         await conn.beginTransaction();
         const items = Array.isArray(input.items) && input.items.length ? input.items : [{ product_id: 1, quantity: 1, unit_price: 380 }];
@@ -1543,7 +1567,7 @@ function createMySqlStore() {
     },
     async updateOrderStatus(id, input) {
       await ensurePaymentColumns();
-      const conn = await pool.getConnection();
+      const conn = await getConnection();
       try {
         await conn.beginTransaction();
         const [orders] = await conn.execute("SELECT * FROM orders WHERE id = ? FOR UPDATE", [id]);
@@ -1650,7 +1674,7 @@ function createMySqlStore() {
     },
     async createCustomerReceiptVoucher(input) {
       await ensurePaymentColumns();
-      const conn = await pool.getConnection();
+      const conn = await getConnection();
       try {
         await conn.beginTransaction();
         const orderId = Number(input.order_id || 0);
@@ -1714,7 +1738,7 @@ function createMySqlStore() {
     },
     async deleteCustomerReceiptVoucher(id) {
       await ensurePaymentColumns();
-      const conn = await pool.getConnection();
+      const conn = await getConnection();
       try {
         await conn.beginTransaction();
         const [payments] = await conn.execute("SELECT * FROM payments WHERE id = ? AND COALESCE(is_active, 1) = 1 FOR UPDATE", [id]);
@@ -1747,7 +1771,7 @@ function createMySqlStore() {
     },
     async createPayment(input) {
       await ensurePaymentColumns();
-      const conn = await pool.getConnection();
+      const conn = await getConnection();
       try {
         await conn.beginTransaction();
         const isGeneralReceipt = input.source_type === "general_receipt";
@@ -1792,7 +1816,7 @@ function createMySqlStore() {
     },
     async updatePayment(id, input) {
       await ensurePaymentColumns();
-      const conn = await pool.getConnection();
+      const conn = await getConnection();
       try {
         await conn.beginTransaction();
         const [payments] = await conn.execute("SELECT * FROM payments WHERE id = ? AND COALESCE(is_active, 1) = 1 FOR UPDATE", [id]);
@@ -1847,7 +1871,7 @@ function createMySqlStore() {
     },
     async deletePayment(id) {
       await ensurePaymentColumns();
-      const conn = await pool.getConnection();
+      const conn = await getConnection();
       try {
         await conn.beginTransaction();
         const [payments] = await conn.execute("SELECT * FROM payments WHERE id = ? AND COALESCE(is_active, 1) = 1 FOR UPDATE", [id]);
@@ -1877,7 +1901,7 @@ function createMySqlStore() {
     },
     async createExpense(input) {
       await ensureExpenseColumns();
-      const conn = await pool.getConnection();
+      const conn = await getConnection();
       try {
         await conn.beginTransaction();
         const paidAt = input.paid_at || new Date().toISOString().slice(0, 10);
@@ -1909,7 +1933,7 @@ function createMySqlStore() {
     },
     async updateExpense(id, input) {
       await ensureExpenseColumns();
-      const conn = await pool.getConnection();
+      const conn = await getConnection();
       try {
         await conn.beginTransaction();
         const [expenses] = await conn.execute("SELECT * FROM expenses WHERE id = ? AND COALESCE(is_active, 1) = 1 FOR UPDATE", [id]);
@@ -1960,7 +1984,7 @@ function createMySqlStore() {
     },
     async deleteExpense(id) {
       await ensureExpenseColumns();
-      const conn = await pool.getConnection();
+      const conn = await getConnection();
       try {
         await conn.beginTransaction();
         const [expenses] = await conn.execute("SELECT * FROM expenses WHERE id = ? AND COALESCE(is_active, 1) = 1 FOR UPDATE", [id]);

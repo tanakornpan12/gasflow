@@ -9,14 +9,14 @@ This file preserves intentionally deferred engineering and security work for hum
 ## AI Retrieval Summary
 
 - Auth tokens are still persisted in browser `localStorage`; this was intentionally not redesigned during the security hardening PR.
-- TypeScript coverage is intentionally scoped; the MySQL adapter needs a dedicated typing PR because `mysql2` returns broad `QueryResult` unions.
+- TypeScript coverage is intentionally scoped; the MySQL adapter now has a central `mysql2` result cast and is included in typecheck, but domain-level row typing still needs follow-up work.
 - Generated media/output folders and internal AI/dev folders must stay out of Git unless a future release-policy PR explicitly promotes curated artifacts.
 - CI/CD, monitoring, deployment readiness, and logging/PII masking should be added before production go-live.
 
 ## Deferred Decisions
 
 - `localStorage` token handling is accepted only as an interim implementation. Future auth work should migrate to a stronger session model.
-- MySQL TypeScript typing was scoped out to avoid a risky data-layer refactor inside a quality-check PR.
+- MySQL TypeScript typing was initially scoped out to avoid a risky data-layer refactor inside a quality-check PR; the adapter now has baseline coverage, while narrower row/result models remain deferred.
 - Generated output folders such as `gasflow-ad-hyperframes/` and `gasflow-intro-video/` are local artifacts and should not be committed.
 - Internal folders such as `docs/`, `second brain/`, and `AGENTS.md` are intentionally kept out of public Git history unless Smart explicitly approves a sanitized public handoff.
 
@@ -41,9 +41,9 @@ This file preserves intentionally deferred engineering and security work for hum
 ### 3. MySQL Adapter Type Hardening
 
 - Description: `backend/store/store-mysql.js` uses `mysql2/promise`. TypeScript sees query results as broad unions such as `QueryResult`, `ResultSetHeader`, and row arrays.
-- Current risk: Real query shape mistakes can be hidden because the adapter is not strongly typed, while naive TypeScript coverage creates noisy false positives.
-- Why deferred: Proper typing requires adding typed read/write helpers and touching many store methods.
-- Recommended future PR scope: Introduce typed helper functions for row queries, single-row queries, insert/update results, and transactions; then expand TypeScript coverage to the MySQL store.
+- Current risk: The adapter is now covered by TypeScript, but row objects are still broad records, so domain field mistakes can still slip through.
+- Why deferred: Narrow row models require carefully annotating many existing query shapes without changing persistence behavior.
+- Recommended future PR scope: Add domain-specific row/result typedefs for high-risk flows such as orders, payments, goods receipts, stock movements, and user auth; replace broad row casts incrementally.
 - Estimated complexity: Medium.
 
 ### 4. TypeScript Coverage Gaps
@@ -106,11 +106,11 @@ This file preserves intentionally deferred engineering and security work for hum
 
 ### Issue Draft: Harden mysql2 TypeScript Typing
 
-- Title: Harden MySQL adapter TypeScript typing
+- Title: Add domain row typings for MySQL adapter
 - Body:
-  - Problem: `backend/store/store-mysql.js` cannot be broadly covered by TypeScript yet because `mysql2` query results are broad unions.
-  - Scope: Add typed helpers for row arrays, single-row reads, inserts, updates, and transaction blocks. Expand `tsconfig.json` coverage to the MySQL adapter after helpers are in place.
-  - Acceptance: `npm run typecheck` includes `backend/store/store-mysql.js` without suppressing useful errors.
+  - Problem: `backend/store/store-mysql.js` is included in TypeScript coverage, but many rows are still typed as broad records.
+  - Scope: Add domain-specific typedefs for row arrays, single-row reads, inserts, updates, and transaction blocks in the highest-risk flows.
+  - Acceptance: `npm run typecheck` continues to include `backend/store/store-mysql.js` and catches field-shape mistakes in selected domain flows.
 - Labels: `technical-debt`, `typescript`, `database`
 
 ### Issue Draft: Migrate Auth Tokens Away From localStorage
