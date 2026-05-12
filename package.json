@@ -1,6 +1,7 @@
 {
   "scripts": {
     "check:syntax": "node scripts/check-syntax.cjs",
+    "db:setup": "node scripts/migrate-mysql.cjs",
     "dev": "node backend/server.js",
     "start": "node backend/server.js",
     "lint": "npm run check:syntax && eslint backend web-admin/src mobile-app/App.js mobile-app/src scripts && node scripts/check-project-hygiene.cjs",

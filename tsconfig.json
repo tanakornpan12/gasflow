@@ -26,6 +26,7 @@
     "scripts/check-module-contracts.cjs",
     "scripts/check-project-hygiene.cjs",
     "scripts/check-syntax.cjs",
+    "scripts/migrate-mysql.cjs",
     "scripts/run-unit-tests.cjs"
   ],
   "exclude": [
