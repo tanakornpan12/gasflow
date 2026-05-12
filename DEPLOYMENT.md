@@ -83,10 +83,48 @@ Admins should use user management to reset passwords until SMTP is configured.
 - Domain/DNS: use Cloudflare DNS and point `app.example.com` to the Node service.
 - Secrets: store all production values in the hosting platform, never in Git.
 
+## Staging Database Setup
+
+Use `npm run db:setup` to apply `database/schema.sql` to the staging MySQL
+database. The schema is written with `CREATE TABLE IF NOT EXISTS` and
+`INSERT IGNORE` statements so the setup command can be repeated for a staging
+database without dropping existing tables.
+This is intended for a new or disposable staging database; it is not a full
+production data migration framework.
+
+Required environment variables:
+
+| Variable | Notes |
+| --- | --- |
+| `MYSQL_HOST` | Staging MySQL host. |
+| `MYSQL_PORT` | Positive integer, commonly `3306`. |
+| `MYSQL_USER` | Staging DB user. |
+| `MYSQL_PASSWORD` | Staging DB password. |
+| `MYSQL_DATABASE` | Staging DB name. |
+| `DB_SETUP_CONFIRM` | Must be `staging` so the script cannot run by accident. |
+
+Run this only after confirming the target database is staging:
+
+```sh
+DB_SETUP_CONFIRM=staging npm run db:setup
+```
+
+For Windows PowerShell local verification, set environment variables in the
+current shell before running the command:
+
+```powershell
+$env:DB_SETUP_CONFIRM = "staging"
+npm run db:setup
+```
+
+Do not run this against production unless a separate production migration plan
+has been reviewed and approved. Production data changes should always have an
+explicit backup and rollback plan.
+
 ## Pre-Deployment Checklist
 
 1. Create a managed MySQL database.
-2. Apply `database/schema.sql` to the production database.
+2. Apply `database/schema.sql` to the staging database with `npm run db:setup`.
 3. Configure all required production environment variables.
 4. Set `NODE_ENV=production`.
 5. Start the app and confirm startup fails if a required value is missing.
