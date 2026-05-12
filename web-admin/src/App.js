@@ -1,6 +1,8 @@
 import { createElement as h, render } from "./mini-react.js";
 
 const todayIso = new Date().toISOString().slice(0, 10);
+// TODO(security): Auth tokens are kept in localStorage as an interim model.
+// A future auth PR should move to a hardened session/cookie design and review token lifetime.
 const AUTH_TOKEN_KEY = "gasflow_auth_token";
 const SELECTED_BRANCH_KEY = "gasflow_selected_branch_id";
 

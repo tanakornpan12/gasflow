@@ -9,6 +9,8 @@ const webRoot = path.join(projectRoot, "web-admin");
 
 loadEnv(path.join(projectRoot, ".env"));
 const isProduction = process.env.NODE_ENV === "production";
+// TODO(security): Add a production readiness gate for APP_BASE_URL, CORS, SMTP,
+// admin defaults, and storage config instead of relying on scattered checks.
 const { createStore } = require("./store/store");
 const { hasFeaturePermission } = require("./store/auth-utils");
 const { isEmailConfigured, sendPasswordResetEmail } = require("./mailer");

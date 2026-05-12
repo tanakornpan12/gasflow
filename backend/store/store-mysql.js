@@ -70,6 +70,8 @@ function createMySqlStore() {
     charset: "utf8mb4",
   });
 
+  // TODO(types): mysql2 returns broad QueryResult unions. Add typed row/result helpers
+  // in a future PR before expanding TypeScript coverage across this adapter.
   async function query(sql, params = []) {
     const [rows] = await pool.execute(sql, params);
     return rows;
