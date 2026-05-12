@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Build, test, lint, and typecheck
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm.cmd ci
+
+      - name: Run lint
+        run: npm.cmd run lint
+
+      - name: Run typecheck
+        run: npm.cmd run typecheck
+
+      - name: Run tests
+        run: npm.cmd test
+
+      - name: Run build
+        run: npm.cmd run build
